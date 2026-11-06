@@ -1,6 +1,6 @@
-<USN_1>,<USN_2>,<USN_3>,<USN_4>
+1RUA24CSE0517, 1RUA24CSE0548, 1RUA24CSE0514
 
-# Evaluation — P4: Edge-Preserving Depth Map Upsampling and Refinement (Team <TeamID>)
+# Evaluation — P4: Edge-Preserving Depth Map Upsampling and Refinement (Team Golden Trio)
 
 Primary method: **Hybrid** (cue-driven fusion of bicubic, guided filter, JBU and EdgeDepthNet + noise-adaptive edge-aware back-projection). All numbers below were produced by `scripts/evaluate.py`, `scripts/ablation.py` and `scripts/failure_cases.py` on the unseen, scene-disjoint NYU Depth V2 test split (24 frames, 320×240), on 2 CPU cores, no GPU. Regenerate with `python scripts/make_report.py`.
 

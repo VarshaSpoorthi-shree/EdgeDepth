@@ -12,14 +12,14 @@ short_description: RGB-guided edge-preserving depth upsampling (P4)
 
 # EdgeDepth — RGB-Guided Edge-Preserving Depth Map Upsampling and Refinement
 
-**Computer Vision Hackathon 2026 · Problem P4 · Team `<TeamID>`**
+**Computer Vision Hackathon 2026 · Problem P4 · Team `Golden Trio`**
 
 EdgeDepth turns low-resolution or sparse, noisy, hole-ridden depth maps into dense high-resolution depth
 maps that keep object boundaries and depth discontinuities sharp, using the RGB image as a guide without
 copying its texture. Its primary method is a **hybrid reconstruction** that fuses classical interpolation,
 edge-aware filters and a lightweight CNN with a per-pixel, cue-driven mixture of experts.
 
-* Live app: `<public URL — see Deployment>`
+* Live app: `<https://edgedepth-p4.streamlit.app/>`
 * Evaluation file: [`eval_P4_TeamID.md`](eval_P4_TeamID.md) · Design document: [`docs/design_document.md`](docs/design_document.md)
 * Architecture: [`docs/architecture.md`](docs/architecture.md) ([Mermaid source](docs/architecture.mmd)) · Ablation: [`docs/ablation_study.md`](docs/ablation_study.md) · Failure analysis: [`docs/failure_analysis.md`](docs/failure_analysis.md)
 * Demo script: [`docs/demo_script.md`](docs/demo_script.md) · Viva Q&A: [`docs/viva_qa.md`](docs/viva_qa.md)
@@ -179,16 +179,14 @@ See [`docs/architecture.md`](docs/architecture.md) for diagrams of the system, d
 
 ## Deployment
 
-The app is a standard Docker Space (front matter at the top of this README). To publish on Hugging Face Spaces:
+Live app: **https://edgedepth-p4.streamlit.app/** (Streamlit Community Cloud, free tier, CPU only).
 
-1. Create a Space → SDK **Docker** → blank.
-2. `git remote add space https://huggingface.co/spaces/<user>/edgedepth && git push space main`
-   (binary files ≤ 10 MB need no LFS; the checkpoint is ~3 MB).
-3. The container listens on port 7860 and exposes `/_stcore/health`. Cold start ≈ 1–2 min; a full hybrid
-   reconstruction takes < 2 s on the free 2-vCPU tier.
-
-Alternatives: Streamlit Community Cloud (point it at `app.py`; `requirements.txt` already uses CPU wheels),
-Render / Railway (use the Dockerfile; `$PORT` is honoured). No secrets or API keys are used.
+* Deployed from this GitHub repo: main file `app.py`, Python 3.11, dependencies from `requirements.txt`.
+  Every push to `main` redeploys automatically. No secrets or API keys are used.
+* The checkpoint and images are stored with Git LFS; Streamlit Cloud fetches them automatically.
+* Free apps sleep after ~12 h without visitors. The first visit then takes about a minute to wake the app.
+* Alternative: the included `Dockerfile` runs the same app on any Docker host
+  (`docker build -t edgedepth . && docker run -p 7860:7860 edgedepth`).
 
 ## Limitations
 

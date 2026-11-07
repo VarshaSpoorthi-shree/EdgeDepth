@@ -4,7 +4,7 @@
 
 | | |
 | :--- | :--- |
-| **Team ID** | T03 |
+| **Team ID** | T87 |
 | **Problem Statement ID** | P4 — Edge-Preserving Depth Map Upsampling and Refinement |
 | **Repository** | https://github.com/VarshaSpoorthi-shree/EdgeDepth |
 | **Live application** | https://edgedepth-p4.streamlit.app/ |

@@ -173,7 +173,7 @@ Mean of the clean and noisy + missing conditions (24 frames × 2 conditions = 48
 - **Edge F1 separates the methods most at 8×:** 0.782 for the hybrid vs 0.294 for bicubic. Interpolation can no longer represent boundaries at that scale.
 - **Best RMSE everywhere:** the hybrid is best in every factor/condition combination, on sparse input, and on unseen sensors.
 
-![Metrics vs upsampling factor](results/figures/report/fig6_metrics_vs_scale.png)
+![Metrics vs upsampling factor](results/figures/metrics_vs_scale.png)
 
 ### 2.5 Processing latency and memory consumption
 

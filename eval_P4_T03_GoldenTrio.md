@@ -1,10 +1,10 @@
-<USN_1>, <USN_2>, <USN_3>
+1RUACSE0517, 1RUACSE0548, 1RUACSE0514
 
 # Evaluation — EdgeDepth: RGB-Guided Edge-Preserving Depth Map Upsampling and Refinement
 
 | | |
 | :--- | :--- |
-| **Team ID** | T02 |
+| **Team ID** | T03 |
 | **Problem Statement ID** | P4 — Edge-Preserving Depth Map Upsampling and Refinement |
 | **Repository** | https://github.com/VarshaSpoorthi-shree/EdgeDepth |
 | **Live application** | https://edgedepth-p4.streamlit.app/ |
@@ -490,15 +490,3 @@ live on the app's **Failure Analysis** page.
   - A small training set (126 frames from 6 scenes, trained for 52 minutes on CPU).
 
 ---
-
-## 8. Submission checklist
-
-- ☐ Team ID and all members' USNs in the first line *(USN placeholders to be filled in)*
-- ☑ Model configuration and hardware details (Section 1)
-- ☑ All P4 evaluation metrics in the specified order (Section 2)
-- ☑ Baseline versus proposed model comparison (Section 3)
-- ☑ Image comparisons for at least three inputs — four provided (Section 4)
-- ☑ Ablation study (Section 5)
-- ☑ At least three failure cases with explanations — five provided (Section 6)
-- ☑ Conclusion (Section 7)
-- ☐ This .md file is included in the team's GitHub repository

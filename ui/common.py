@@ -49,6 +49,7 @@ class InputBundle:
     gt: Optional[np.ndarray]
     label: str
     source: str  # "simulated" | "real_lowres"
+    rgb_shift: tuple = (0, 0)  # simulated RGB-depth misalignment (dy, dx)
 
 
 def hero(title: str, subtitle: str):
@@ -90,6 +91,17 @@ def sample_label(sid: str) -> str:
     return f"{sid}  ·  {s.get('dataset', '')}"
 
 
+def _with_shift(bundle: InputBundle, sh) -> InputBundle:
+    if sh == (0, 0):
+        return bundle
+    from edgedepth.alignment import shift_image
+
+    bundle.rgb = shift_image(bundle.rgb, *sh)
+    bundle.rgb_shift = sh
+    bundle.label += f" (RGB shifted {sh[1]:+d},{sh[0]:+d})"
+    return bundle
+
+
 def build_simulated(rgb, gt, cfg: DegradationConfig, label) -> InputBundle:
     return InputBundle(rgb, degrade(gt, cfg), gt, label, "simulated")
 
@@ -100,6 +112,58 @@ def build_real_lowres(rgb, lr_depth, label) -> InputBundle:
     if obs.scale > 16:
         raise InputError("Depth map is more than 16x smaller than the RGB image; not supported.")
     return InputBundle(rgb, obs, None, label, "real_lowres")
+
+
+def misalignment_controls(key: str):
+    """Optional simulated calibration error: shift the RGB image against the depth."""
+    with st.expander("Simulate RGB–depth misalignment (camera calibration error)", expanded=False):
+        c1, c2 = st.columns(2)
+        dx = c1.slider("Horizontal shift of the RGB image (px)", -10, 10, 0, key=f"{key}_shx")
+        dy = c2.slider("Vertical shift of the RGB image (px)", -10, 10, 0, key=f"{key}_shy")
+    return int(dy), int(dx)
+
+
+def align_toggle(key: str) -> bool:
+    return st.toggle("Auto-correct RGB–depth misalignment", value=True, key=f"{key}_align",
+                     help="Estimates a shift between the colour image and the depth by matching colour edges to depth edges, "
+                          "and corrects it before reconstruction. Shifts of 1 px or less, or without a clear correlation peak, "
+                          "are left untouched, so aligned inputs are not changed.")
+
+
+def apply_alignment(bundle: "InputBundle", enabled: bool):
+    """Return (rgb to use, estimate dict or None)."""
+    if not enabled:
+        return bundle.rgb, None
+    from edgedepth.alignment import auto_align
+
+    return auto_align(bundle.rgb, bundle.obs)
+
+
+def alignment_report(est, rgb_shift=(0, 0)):
+    """Short text + NCC surface figure for an alignment estimate."""
+    import plotly.graph_objects as go
+
+    if est is None:
+        return
+    R = (est["ncc"].shape[0] - 1) // 2
+    if est["applied"]:
+        msg = (f"🔧 Misalignment detected and corrected: RGB shifted by **{est['dx']:+d} px horizontally, {est['dy']:+d} px vertically** "
+               f"(correlation gain {est['gain']:.3f}).")
+    else:
+        msg = (f"✅ No significant misalignment detected (best shift {est['dx']:+d}, {est['dy']:+d} px, gain {est['gain']:.3f} "
+               f"≤ threshold or within ±1 px) — RGB used unchanged.")
+    if rgb_shift != (0, 0):
+        msg += f"  *Simulated error: {rgb_shift[1]:+d} px horizontal, {rgb_shift[0]:+d} px vertical → the ideal correction is {-rgb_shift[1]:+d}, {-rgb_shift[0]:+d}.*"
+    st.caption(msg)
+    with st.expander("Alignment diagnostics — edge correlation for every candidate shift", expanded=False):
+        fig = go.Figure(go.Heatmap(z=est["ncc"], x=list(range(-R, R + 1)), y=list(range(-R, R + 1)), colorscale="Viridis",
+                                   colorbar=dict(title="NCC")))
+        fig.add_trace(go.Scatter(x=[est["dx"]], y=[est["dy"]], mode="markers", marker=dict(symbol="x", size=14, color="red"), name="best"))
+        fig.update_layout(height=360, xaxis_title="horizontal shift applied to RGB (px)", yaxis_title="vertical shift (px)",
+                          margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor="rgba(0,0,0,0)", yaxis=dict(autorange="reversed"))
+        st.plotly_chart(fig, width="stretch")
+        st.caption("Normalised cross-correlation between depth edges (from an RGB-free interpolation) and colour edges. "
+                   "A single sharp peak away from the centre indicates a real misalignment.")
 
 
 def degradation_controls(key: str, default_scale: int = 4) -> DegradationConfig:
@@ -139,7 +203,8 @@ def input_selector(key: str) -> Optional[InputBundle]:
         if "raw sensor" in samples[sid].get("gt", ""):
             st.caption("This sensor frame has holes: they are excluded from all reference metrics.")
         cfg = degradation_controls(key)
-        return build_simulated(rgb, gt, cfg, sid)
+        sh = misalignment_controls(key)
+        return _with_shift(build_simulated(rgb, gt, cfg, sid), sh)
 
     kind = st.radio("What does the depth file contain?",
                     ["High-res ground-truth depth → simulate degradation (metrics available)",
@@ -163,7 +228,8 @@ def input_selector(key: str) -> Optional[InputBundle]:
             rgb = cv2.resize(rgb, (depth.shape[1], depth.shape[0]), interpolation=cv2.INTER_AREA)
         rgb, depth = fit_to_multiple(rgb, depth, 8, C.MAX_SIDE)
         cfg = degradation_controls(key)
-        return build_simulated(rgb, depth, cfg, up_rgb.name)
+        sh = misalignment_controls(key)
+        return _with_shift(build_simulated(rgb, depth, cfg, up_rgb.name), sh)
     if depth.shape[0] > rgb.shape[0] or depth.shape[1] > rgb.shape[1]:
         st.error("For real low-resolution input the depth map must not be larger than the RGB image.")
         return None

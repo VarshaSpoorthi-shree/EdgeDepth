@@ -13,7 +13,8 @@ os.chdir(ROOT)
 
 from streamlit.testing.v1 import AppTest  # noqa: E402
 
-PAGES = ["🏠 Home", "🧩 Depth Reconstruction", "🆚 Method Comparison", "📊 Evaluation Dashboard", "🏗️ Technical Architecture", "⚠️ Failure Analysis"]
+PAGES = ["🏠 Home", "🧩 Depth Reconstruction", "🆚 Method Comparison", "📊 Evaluation Dashboard", "🏗️ Technical Architecture",
+         "⚠️ Failure Analysis", "🧊 3-D Flying-Pixel Viewer"]
 
 
 def app():
@@ -66,3 +67,38 @@ def test_failure_cases_run():
         at.selectbox[0].set_value(s).run()
         at.button[0].click().run()
         assert not at.exception and not at.error, s
+
+
+def test_reconstruction_shows_confidence_map():
+    at = goto(app(), PAGES[1])
+    at.button[0].click().run()
+    assert not at.exception and not at.error
+    assert any("Rank correlation" in m.label for m in at.metric)
+
+
+def test_viewer3d_builds_all_colour_modes():
+    at = goto(app(), PAGES[6])
+    for mode in at.selectbox(key="v3d_colour").options:
+        at.selectbox(key="v3d_colour").set_value(mode).run()
+        at.button[0].click().run()
+        assert not at.exception and not at.error, mode
+        assert any("Flying pixels" in m.label for m in at.metric)
+
+
+def test_misalignment_simulation_and_autocorrection():
+    at = goto(app(), PAGES[1])
+    at.slider(key="rec_shx").set_value(8).run()
+    at.button[0].click().run()
+    assert not at.exception and not at.error
+    assert any("Misalignment detected" in c.value or "No significant misalignment" in c.value for c in at.caption)
+    at.toggle(key="rec_align").set_value(False).run()
+    at.button[0].click().run()
+    assert not at.exception and not at.error
+
+
+def test_failure_misalignment_shows_aligned_hybrid():
+    at = goto(app(), PAGES[5])
+    opt = [o for o in at.selectbox[0].options if "Incorrect boundaries" in o][0]
+    at.selectbox[0].set_value(opt).run()
+    at.button[0].click().run()
+    assert not at.exception and not at.error

@@ -130,9 +130,62 @@ def benchmark_section():
         st.plotly_chart(fig, width="stretch")
 
 
+def new_features_section():
+    r = load_json("new_features.json")
+    st.markdown("### Confidence map and flying pixels (unseen test split)")
+    if not r:
+        st.info("results/new_features.json not found — run `python scripts/eval_new_features.py`.")
+        return
+    c = r["confidence"]["overall"]
+    k = st.columns(4)
+    k[0].metric("AUSE — EdgeDepth confidence ↓", f"{c['ause_learned']:.3f}")
+    k[1].metric("AUSE — methods' disagreement only", f"{c['ause_expert_std']:.3f}")
+    k[2].metric("AUSE — random map", f"{c['ause_random']:.3f}")
+    k[3].metric("Rank correlation with true error", f"{c['spearman_learned']:.2f}")
+    fr = np.array(r["confidence"]["sparsification_fractions"]) * 100
+    mc = r["confidence"]["mean_curves"]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=fr, y=mc["oracle"], name="Oracle (true error)", line=dict(dash="dash")))
+    fig.add_trace(go.Scatter(x=fr, y=mc["learned"], name="EdgeDepth confidence", line=dict(width=3, color="#4FD1C5")))
+    fig.add_trace(go.Scatter(x=fr, y=mc["expert_std"], name="Methods' disagreement only"))
+    fig.add_hline(y=1.0, line=dict(dash="dot", color="gray"), annotation_text="random")
+    fig.update_layout(title="Mean sparsification curve (168 test inputs)", height=340, xaxis_title="% least-confident pixels removed",
+                      yaxis_title="remaining RMSE (relative)", **LAYOUT)
+    st.plotly_chart(fig, width="stretch")
+    cal = r["confidence"]["calibration_deciles"]
+    st.dataframe(pd.DataFrame([{"Predicted-error decile": x["decile"], "Mean predicted error (cm)": x["mean_predicted_m"] * 100,
+                                "Mean true error (cm)": x["mean_true_m"] * 100} for x in cal]).style.format(precision=2),
+                 width="stretch", hide_index=True)
+    st.caption("Calibration: within each band of predicted error, the true error should be about the same size.")
+    fp = r["flying_pixels"]
+    df = pd.DataFrame([{"Method": METHOD_LABELS[m], "All (%)": fp["overall"][m], **{sc: fp["by_scale"][sc][m] for sc in ("2x", "4x", "8x", "sparse")}}
+                       for m in fp["overall"]])
+    st.markdown("#### Flying pixels at depth discontinuities (% of discontinuity pixels, lower is better)")
+    st.dataframe(df.style.format(precision=1), width="stretch", hide_index=True)
+    al = load_json("alignment_eval.json")
+    if al:
+        st.markdown("#### Automatic RGB–depth misalignment correction (hybrid, test split)")
+        sa = al["shifted_all"]
+        k = st.columns(4)
+        k[0].metric("Boundary RMSE, misaligned", f"{sa['b_rmse_before']:.4f} m")
+        k[1].metric("… with auto-alignment", f"{sa['b_rmse_after']:.4f} m", f"{(sa['b_rmse_after'] - sa['b_rmse_before']) / sa['b_rmse_before'] * 100:+.1f} %", delta_color="inverse")
+        k[2].metric("… if perfectly aligned", f"{sa['b_rmse_aligned']:.4f} m")
+        k[3].metric("Share of the misalignment loss recovered", f"{sa['pct_of_boundary_loss_recovered']:.0f} %")
+        rows = [{"RGB shift (dy, dx) px": sh, "B-RMSE misaligned": v["b_rmse_before"], "B-RMSE corrected": v["b_rmse_after"],
+                 "B-RMSE aligned": v["b_rmse_aligned"], "Loss recovered (%)": v["pct_of_boundary_loss_recovered"],
+                 "Inputs corrected (%)": v["corrected_pct"]} for sh, v in al["by_shift"].items()]
+        st.dataframe(pd.DataFrame(rows).style.format(precision=4), width="stretch", hide_index=True)
+        ai = al["aligned_inputs"]
+        st.caption(f"Correctly aligned inputs: {ai['changed']} of {ai['n']} received a small (mostly 2–3 px) correction; "
+                   f"boundary RMSE {ai['b_rmse_before']:.4f} → {ai['b_rmse_after']:.4f} m (negligible change). "
+                   "Vertical shifts and 2 px shifts are corrected poorly — see docs/new_features.md.")
+
+
 def render():
     hero("Evaluation Dashboard", "Reference metrics only when valid ground truth exists · nothing here is hard-coded.")
-    tab1, tab2, tab3 = st.tabs(["Live (your input)", "Benchmark & ablation", "Mini-benchmark"])
+    tab1, tab2, tab4, tab3 = st.tabs(["Live (your input)", "Benchmark & ablation", "Unique features", "Mini-benchmark"])
+    with tab4:
+        new_features_section()
     with tab1:
         live_section()
     with tab2:

@@ -14,7 +14,7 @@ if ROOT not in sys.path:
 st.set_page_config(page_title="EdgeDepth · RGB-guided depth upsampling", page_icon="🧊", layout="wide",
                    initial_sidebar_state="auto")
 
-from ui import page_arch, page_compare, page_eval, page_failure, page_home, page_reconstruct  # noqa: E402
+from ui import page_arch, page_compare, page_eval, page_failure, page_home, page_reconstruct, page_viewer3d  # noqa: E402
 from ui.common import CSS  # noqa: E402
 from edgedepth.pipeline import model_available  # noqa: E402
 
@@ -22,6 +22,7 @@ PAGES = {
     "🏠 Home": page_home,
     "🧩 Depth Reconstruction": page_reconstruct,
     "🆚 Method Comparison": page_compare,
+    "🧊 3-D Flying-Pixel Viewer": page_viewer3d,
     "📊 Evaluation Dashboard": page_eval,
     "🏗️ Technical Architecture": page_arch,
     "⚠️ Failure Analysis": page_failure,

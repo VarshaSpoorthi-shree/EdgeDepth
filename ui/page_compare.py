@@ -2,7 +2,8 @@ import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
 
-from ui.common import depth_vis, hero, input_selector, lr_vis, method_options, metrics_frame, range_for, show_images
+from ui.common import (align_toggle, alignment_report, apply_alignment, depth_vis, hero, input_selector, lr_vis, method_options,
+                       metrics_frame, range_for, show_images)
 from edgedepth import METHOD_LABELS
 from edgedepth.io_utils import colorize_error
 from edgedepth.pipeline import model_available, run_methods
@@ -17,16 +18,19 @@ def render():
     methods = method_options(model_ok)
     if not model_ok:
         st.warning("Deep-learning checkpoint missing — comparing the remaining methods (hybrid uses its classical fallback).")
+    auto = align_toggle("cmp")
     if st.button("▶ Run all methods", type="primary", width="stretch"):
         with st.spinner("Reconstructing with every method …"):
-            res = run_methods(bundle.rgb, bundle.obs, methods, gt=bundle.gt, track_memory=True)
-        st.session_state["cmp_results"] = {"bundle": bundle, "res": res}
+            rgb_used, est = apply_alignment(bundle, auto)
+            res = run_methods(rgb_used, bundle.obs, methods, gt=bundle.gt, track_memory=True)
+        st.session_state["cmp_results"] = {"bundle": bundle, "res": res, "align": est}
         st.session_state["bundle"] = bundle
     data = st.session_state.get("cmp_results")
     if not data:
         st.info("Press **Run all methods**.")
         return
     b, res = data["bundle"], data["res"]
+    alignment_report(data.get("align"), getattr(b, "rgb_shift", (0, 0)))
     lo, hi = range_for(b)
     H, W = b.obs.target_hw
     st.caption(f"Output {W}×{H} for every method · colour range {lo:.2f}–{hi:.2f} m (shared) · "

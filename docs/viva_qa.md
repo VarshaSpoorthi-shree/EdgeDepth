@@ -188,3 +188,64 @@ whose inpainted regions are not real measurements.
 Depth of indoor scenes can reveal room layouts; the app processes uploads in memory only and stores nothing.
 Upsampled depth is an estimate — it must not be used for safety-critical decisions (e.g. robot collision
 avoidance) without real sensor validation, since hallucinated surfaces in holes look plausible.
+
+
+## G. Unique features: confidence map and flying pixels
+
+**Q. How can you predict the error without the ground truth?**
+We don't predict the error of a specific pixel from the answer. We learn, on the validation split, how the hybrid's
+own internal signals relate to its error: method disagreement, correction size, distance to measurements, edge
+probability, noise and spacing. On unseen test images, this relationship ranks pixels by error with a rank
+correlation of 0.59 and is calibrated to within about 0.5 cm per band.
+
+**Q. Why fit in log space, and what is the 1.84 correction?**
+Errors span several orders of magnitude (sub-millimetre on flat surfaces, tens of centimetres in holes and at edges) and are roughly log-normal, so a linear model of
+log-error fits much better. Back-transforming a log prediction gives the *median*, not the mean. Multiplying by
+exp(σ²/2) = 1.84, where σ² is the residual variance on validation, gives an unbiased mean. Before this correction,
+the predicted errors were about 1.7× too small.
+
+**Q. What is AUSE?**
+Area Under the Sparsification Error. Remove pixels in order of decreasing predicted uncertainty and plot the error of
+what remains. Do the same with the true error (the oracle). The area between the two curves, normalised by the full
+error, is the AUSE. Lower is better, a random map gives about 0.78, and ours gives 0.107.
+
+**Q. Isn't the confidence just the disagreement between methods?**
+Disagreement is one of nine signals. On its own it gives an AUSE of 0.160; the fitted combination reaches 0.107,
+33 % better. Distance to measurements and the edge probabilities add information disagreement cannot, for example
+when all methods agree on a wrong value inside a hole.
+
+**Q. How do you define a flying pixel, and why is it a fair metric?**
+A pixel inside a real depth jump (a 7×7 window whose ground-truth range exceeds 10 %) whose predicted depth is more
+than 25 % of the gap away from both surfaces. It is computed for all methods on the same inputs, against the same
+ground truth, and excludes pixels where the ground truth itself is intermediate.
+
+**Q. Why doesn't hiding low-confidence pixels remove the flying pixels?**
+The confidence map ranks pixels by expected error size. The largest errors are outliers in holes and at badly
+reconstructed objects. Flying pixels are many moderate errors along edges, so they are not among the first pixels
+removed. We report this rather than claim the two features fix the same problem.
+
+Details and full results: `docs/new_features.md`.
+
+
+## H. Unique feature: automatic misalignment correction
+
+**Q. How can you estimate the misalignment if the depth is low resolution and you don't know the true geometry?**
+We build a depth estimate that uses no RGB at all, so its edges cannot be misaligned. They are only blurry. Then we
+find the shift of the colour image whose edges correlate best with those depth edges. Blur spreads the correlation
+peak but does not move it.
+
+**Q. How do you avoid "correcting" images that were already aligned?**
+Two safety rules: ignore shifts of 1 px or less, and require the best shift to beat "no shift" by a correlation gain
+of 0.05, chosen on validation (0 of 60 aligned inputs changed there). On the test set, 20 of 96 aligned inputs still
+got small 2–3 px corrections, with a negligible effect (+0.25 % boundary RMSE). We report that openly.
+
+**Q. Why does it fail on vertical shifts?**
+Correlation can only measure a shift *across* edges. Indoor scenes are dominated by vertical depth edges, so
+horizontal shifts are well constrained and vertical ones are not — the aperture problem from optical flow.
+
+**Q. Why not let the network learn to handle misalignment?**
+That would mean retraining with random misalignments. It could make the network more tolerant, but it could not tell
+the user that the cameras are miscalibrated. The explicit estimate is interpretable: it reports the shift, which is
+also a useful calibration diagnostic.
+
+Details: `docs/new_features.md` §3.

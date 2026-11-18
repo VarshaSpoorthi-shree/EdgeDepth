@@ -1,0 +1,88 @@
+{
+ "dead_zone_px": 1,
+ "thresholds": [
+  {
+   "threshold": 0.0,
+   "mean_b_rmse_shifted": 0.09231800767593086,
+   "mean_b_rmse_aligned": 0.09031375780080755,
+   "aligned_cases_changed": 26,
+   "aligned_cases": 60,
+   "corrected_shifted_cases": 449
+  },
+  {
+   "threshold": 0.01,
+   "mean_b_rmse_shifted": 0.09239401278706888,
+   "mean_b_rmse_aligned": 0.08955817505096396,
+   "aligned_cases_changed": 24,
+   "aligned_cases": 60,
+   "corrected_shifted_cases": 441
+  },
+  {
+   "threshold": 0.015,
+   "mean_b_rmse_shifted": 0.09231163834532102,
+   "mean_b_rmse_aligned": 0.08787787528708577,
+   "aligned_cases_changed": 18,
+   "aligned_cases": 60,
+   "corrected_shifted_cases": 427
+  },
+  {
+   "threshold": 0.02,
+   "mean_b_rmse_shifted": 0.09279097435064614,
+   "mean_b_rmse_aligned": 0.08660779604688287,
+   "aligned_cases_changed": 13,
+   "aligned_cases": 60,
+   "corrected_shifted_cases": 412
+  },
+  {
+   "threshold": 0.03,
+   "mean_b_rmse_shifted": 0.09373217601872359,
+   "mean_b_rmse_aligned": 0.08430511662736535,
+   "aligned_cases_changed": 7,
+   "aligned_cases": 60,
+   "corrected_shifted_cases": 375
+  },
+  {
+   "threshold": 0.04,
+   "mean_b_rmse_shifted": 0.09443898355045045,
+   "mean_b_rmse_aligned": 0.08280643112957478,
+   "aligned_cases_changed": 1,
+   "aligned_cases": 60,
+   "corrected_shifted_cases": 357
+  },
+  {
+   "threshold": 0.05,
+   "mean_b_rmse_shifted": 0.09470596282820527,
+   "mean_b_rmse_aligned": 0.08279777547965447,
+   "aligned_cases_changed": 0,
+   "aligned_cases": 60,
+   "corrected_shifted_cases": 344
+  },
+  {
+   "threshold": 0.06,
+   "mean_b_rmse_shifted": 0.09505103553722923,
+   "mean_b_rmse_aligned": 0.08279777547965447,
+   "aligned_cases_changed": 0,
+   "aligned_cases": 60,
+   "corrected_shifted_cases": 322
+  },
+  {
+   "threshold": 0.08,
+   "mean_b_rmse_shifted": 0.09595473871643966,
+   "mean_b_rmse_aligned": 0.08279777547965447,
+   "aligned_cases_changed": 0,
+   "aligned_cases": 60,
+   "corrected_shifted_cases": 276
+  }
+ ],
+ "reference": {
+  "b_rmse_shifted_uncorrected": 0.09961814017733558,
+  "b_rmse_if_perfectly_aligned": 0.08279777547965447
+ },
+ "estimate_accuracy_within_1px_shifted": 0.5541666666666667,
+ "by_scale_accuracy": {
+  "2x": 0.8666666666666667,
+  "4x": 0.8,
+  "8x": 0.16666666666666666,
+  "sparse": 0.38333333333333336
+ }
+}

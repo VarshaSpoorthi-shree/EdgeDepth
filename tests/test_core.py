@@ -177,3 +177,50 @@ def test_hybrid_details_and_fallback():
     assert np.allclose(w.sum(0), 1, atol=1e-4) and 0 <= det["bp_gain"] <= 1
     out_cl = hybrid_reconstruct(rgb, obs, use_dl=False)
     assert out_cl.shape == gt.shape and np.isfinite(out_cl).all()
+
+
+def test_flying_pixels_metric():
+    from edgedepth.metrics import flying_pixel_pct
+
+    _, gt = step_scene()
+    assert flying_pixel_pct(gt, gt) == 0.0
+    ramp = gt.copy()
+    ramp[:, 38:42] = 3.0  # values stranded halfway between the 2 m and 4 m surfaces
+    assert flying_pixel_pct(ramp, gt) > 5.0
+
+
+def test_confidence_map_ranks_errors():
+    from edgedepth.confidence import ause, predict_error
+    from edgedepth.hybrid.fusion import hybrid_reconstruct
+
+    rgb, gt = step_scene()
+    obs = degrade(gt, DegradationConfig(scale=8, noise_level=1, seed=0))
+    out, det = hybrid_reconstruct(rgb, obs, return_details=True)
+    pe = predict_error(obs, out, det)
+    assert pe["error_m"].shape == gt.shape and np.isfinite(pe["error_m"]).all()
+    assert (pe["confidence"] >= 0).all() and (pe["confidence"] <= 1).all()
+    err = np.abs(out - gt).ravel()
+    a, curve, oracle = ause(err, pe["error_m"].ravel())
+    a_rand, _, _ = ause(err, np.random.default_rng(0).random(err.shape))
+    assert a < a_rand
+
+
+def test_alignment_detects_and_ignores():
+    from edgedepth.alignment import auto_align, estimate_shift, shift_image
+
+    rng = np.random.default_rng(0)
+    H, W = 96, 128
+    gt = np.full((H, W), 3.0, np.float32)
+    rgb = np.full((H, W, 3), 120, np.uint8)
+    for k in range(6):  # several objects at different depths, each with its own colour
+        y, x = rng.integers(8, H - 32), rng.integers(8, W - 40)
+        gt[y:y + 20, x:x + 28] = 1.5 + 0.2 * k
+        rgb[y:y + 20, x:x + 28] = rng.integers(0, 255, 3)
+    obs = degrade(gt, DegradationConfig(scale=2, seed=0))
+    _, est0 = auto_align(rgb, obs)
+    assert not est0["applied"]  # aligned input is left alone
+    shifted = shift_image(rgb, 0, 6)
+    est = estimate_shift(shifted, obs)
+    assert abs(est["dx"] + 6) <= 1 and abs(est["dy"]) <= 1
+    fixed, est2 = auto_align(shifted, obs)
+    assert est2["applied"] and fixed.shape == rgb.shape

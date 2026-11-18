@@ -148,6 +148,10 @@ hybrid at 8 px misalignment is still better than bicubic on boundary RMSE (0.221
 **Improvements.** Estimate and compensate the misalignment (e.g. maximise the correlation between depth and RGB
 gradients over small shifts/flows) before guidance; train with small random misalignments for robustness.
 
+**Implemented (after this study).** Automatic misalignment correction (`edgedepth/alignment.py`) now does the first of
+these. On the test split it recovers 65 % of the boundary error caused by misalignment overall, and 87 % for an 8 px
+horizontal shift. Vertical shifts remain poorly corrected; see `docs/new_features.md` §3.
+
 ## Summary
 
 | Failure | Severity for the hybrid | Root cause | Most promising fix |

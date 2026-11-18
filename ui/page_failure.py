@@ -6,10 +6,13 @@ import pandas as pd
 import streamlit as st
 
 from ui.common import ROOT, depth_vis, hero, list_samples, load_json, load_sample, lr_vis, method_options, show_images
-from edgedepth import METHOD_LABELS
+from edgedepth import METHOD_LABELS as _ML
+
+METHOD_LABELS = {**_ML, "hybrid_aligned": "Hybrid + auto-alignment"}
 from edgedepth.degradation import DegradationConfig, degrade
 from edgedepth.io_utils import colorize_error, depth_range
 from edgedepth.classical.edges import canny_edges
+from edgedepth.hybrid.fusion import hybrid_reconstruct
 from edgedepth.pipeline import model_available, run_methods
 
 SCENARIOS = {
@@ -24,7 +27,7 @@ WHY = {
     "hole": "Inside a large hole there is no depth evidence at all. Push-pull/bicubic propagate a smooth membrane from the hole border; the network uses RGB context but cannot recover absolute depth of objects that are entirely inside the hole, so errors concentrate there.",
     "noise": "At ×8 noise the per-sample σ (several cm at 3–5 m) exceeds many real depth steps. The noise estimator triggers denoising, but small discontinuities become indistinguishable from noise and are smoothed away; residual noise is still amplified by bicubic overshoot.",
     "texture": "The true depth is a smooth plane but the RGB is strongly textured. Any method that lets RGB similarity steer depth (JBU most of all, and the RGB term of the hybrid's back-projection) concentrates its error on texture edges — the texture-copy ratio quantifies it. The errors are millimetres here because the plane is smooth, but on real scenes the same mechanism produces ripples. The network's depth gate keeps its ratio near 1, yet the network itself is less accurate on this out-of-distribution plane than bicubic.",
-    "misalign": "RGB-guided methods assume pixel-aligned colour and depth. A calibration/synchronisation error moves every RGB edge, so JBU, guided filter, the network and the hybrid all snap depth boundaries to the wrong place (boundary RMSE and edge F1 degrade), while unguided bicubic is unaffected.",
+    "misalign": "RGB-guided methods assume pixel-aligned colour and depth. A calibration/synchronisation error moves every RGB edge, so JBU, guided filter, the network and the hybrid all snap depth boundaries to the wrong place (boundary RMSE and edge F1 degrade), while unguided bicubic is unaffected. **Our fix:** the last column runs the automatic misalignment correction first — it matches colour edges to the edges of an RGB-free interpolation, estimates the shift and undoes it before the hybrid runs.",
 }
 
 
@@ -64,6 +67,14 @@ def render():
         methods = [m for m in method_options(model_available()) if m in ("bicubic", "joint_bilateral", "guided_filter", "deep_learning", "hybrid")]
         with st.spinner("running …"):
             res = run_methods(r, obs, methods, gt=g, track_memory=False)
+            if kind == "misalign" and "hybrid" in methods:
+                from edgedepth.alignment import auto_align
+                from edgedepth.metrics import all_metrics as _am
+
+                fixed, est = auto_align(r, obs)
+                d = hybrid_reconstruct(fixed, obs)
+                res["hybrid_aligned"] = {"depth": d, "metrics": _am(d, g), "latency_ms": None, "memory_mb": None, "error": None,
+                                         "est": est}
         st.session_state["fail"] = (kind, r, g, obs, res)
     if "fail" in st.session_state and st.session_state["fail"][0] == kind:
         _, r, g, obs, res = st.session_state["fail"]

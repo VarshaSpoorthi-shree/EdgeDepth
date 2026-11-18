@@ -24,3 +24,11 @@ Numbers on screen are computed live; the benchmark numbers come from `results/su
 ## Backup plan
 If the hosted URL is cold, open it 2 minutes before the slot (first load ≈ 1–2 min). Local fallback:
 `docker run -p 7860:7860 edgedepth` or `streamlit run app.py`.
+
+
+## Optional insert: unique features (≈ 25 s)
+If you have time, add this after the Hybrid step, or swap it in for the Mini-benchmark mention.
+
+- **Depth Reconstruction**, Hybrid, 8× noisy → scroll to the confidence map. *"EdgeDepth also tells you where not to trust it. This map is computed without the ground truth. Next to it is the true error — they match. On unseen test images, hiding just 15 % of the least-confident pixels removes two thirds of the error."*
+- **3-D Flying-Pixel Viewer** → Build, then rotate. *"Interpolation leaves depths hanging between objects — the red streaks. Our hybrid halves them, from 49.5 % to 25.5 % on the test set."*
+- **Depth Reconstruction** → open *Simulate RGB–depth misalignment*, set the horizontal shift to 8 px → Run. *"Real cameras drift out of calibration. EdgeDepth detects the shift by itself and corrects it — on the test set this recovers 65 % of the boundary error that misalignment causes."*

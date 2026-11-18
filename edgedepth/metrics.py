@@ -170,3 +170,42 @@ def measure(fn: Callable, *args, track_memory: bool = True, **kwargs):
             tracemalloc.stop()
             mem = max(tm_peak, peak[0]) / 2 ** 20
     return out, dt, mem
+
+
+# ---------------------------------------------------------------------------
+# Flying pixels: depths stranded between foreground and background
+# ---------------------------------------------------------------------------
+def flying_pixel_mask(pred: np.ndarray, ref: np.ndarray | None = None, win: int = 7, jump: float = 0.10,
+                      mid: float = 0.25) -> tuple:
+    """Flying pixels at depth discontinuities.
+
+    In every win x win window whose reference depth range (max - min) exceeds
+    `jump` x min (a real discontinuity), a predicted depth is *flying* if it is
+    farther than `mid` x (max - min) from BOTH the near and the far surface,
+    i.e. it lies in the middle half of the gap and belongs to neither object.
+    With ground truth, `ref` = GT and pixels where the GT itself is intermediate
+    are excluded. Without ground truth, `ref` = the prediction (no-reference
+    version used for uploads). Returns (flying mask, discontinuity-region mask).
+    """
+    r = np.where(ref > 0, ref, np.nan) if ref is not None else pred.astype(np.float32)
+    big = 1e6
+    rr = np.nan_to_num(r, nan=big).astype(np.float32)
+    k = np.ones((win, win), np.uint8)
+    lo = cv2.erode(rr, k)
+    hi = cv2.dilate(np.nan_to_num(r, nan=0).astype(np.float32), k)
+    valid = (lo < big / 2) & (hi > 0)
+    region = valid & ((hi - lo) > jump * np.maximum(lo, 1e-3))
+    gap = np.maximum(hi - lo, 1e-6)
+    dist_pred = np.minimum(np.abs(pred - lo), np.abs(pred - hi))
+    flying = region & (dist_pred > mid * gap)
+    if ref is not None:
+        dist_ref = np.minimum(np.abs(ref - lo), np.abs(ref - hi))
+        keep = region & (dist_ref <= mid * gap) & (ref > 0)
+        return flying & keep, keep
+    return flying, region
+
+
+def flying_pixel_pct(pred: np.ndarray, ref: np.ndarray | None = None) -> float:
+    """Percentage of discontinuity-region pixels that are flying (lower is better)."""
+    f, region = flying_pixel_mask(pred, ref)
+    return float(100.0 * f.sum() / max(region.sum(), 1))

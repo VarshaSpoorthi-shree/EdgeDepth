@@ -224,3 +224,11 @@ def test_alignment_detects_and_ignores():
     assert abs(est["dx"] + 6) <= 1 and abs(est["dy"]) <= 1
     fixed, est2 = auto_align(shifted, obs)
     assert est2["applied"] and fixed.shape == rgb.shape
+
+
+def test_reliability_warning_threshold():
+    from edgedepth.confidence import UNRELIABLE_MEAN_ERR_M, reliability_warning
+
+    assert reliability_warning(np.full((8, 8), UNRELIABLE_MEAN_ERR_M * 0.5, np.float32)) is None
+    msg = reliability_warning(np.full((8, 8), UNRELIABLE_MEAN_ERR_M * 2, np.float32))
+    assert msg is not None and "Low-reliability" in msg

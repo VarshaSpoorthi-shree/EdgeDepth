@@ -249,3 +249,31 @@ the user that the cameras are miscalibrated. The explicit estimate is interpreta
 also a useful calibration diagnostic.
 
 Details: `docs/new_features.md` §3.
+
+
+## I. Generalisation and sparse input
+
+**Q: Does it work on other cameras and scenes, not just NYU?**
+We tested 133 frames from 5 scenes never used for training or tuning: Stanford Lounge, Redwood Bedroom and Stanford
+Fountain (real sensors), and ICL-NUIM living room and office (synthetic, exact ground truth). On every scene the
+hybrid is 24–28 % below bicubic and 5–6 % below the network alone in RMSE, and it wins on 96–100 % of frames;
+the bootstrap 95 % intervals all exclude zero. The confidence map also transfers (AUSE 0.05–0.10, versus 0.107 on NYU).
+
+**Q: Why not TUM, SUN RGB-D, KITTI or Middlebury?**
+Their servers were unreachable from our build environment; only single sample frames of TUM and SUN RGB-D were
+available, and those are in the quick check. Outdoor LiDAR and time-of-flight sensors remain untested.
+
+**Q: Isn't scoring against raw sensor depth unfair?**
+Yes, partly: the raw depth has holes (excluded) and noise (counted as error), so absolute numbers are pessimistic.
+That is why we also used ICL-NUIM, which has exact ground truth. In both groups the order is the same: hybrid best, then the network alone, then the classical methods.
+
+**Q: At what density does it stop working?**
+On the 24 test frames, mean RMSE passes 0.15 m between 1 % (0.127 m) and 0.5 % (0.164 m). At 0.2 %, 58 % of images
+are unusable. Error grows with distance from the nearest sample: about 2.5 cm next to a sample, about 20 cm at
+16–32 px at 0.2 % density.
+
+**Q: Does the confidence map warn the user?**
+It still ranks errors correctly at low density (rank correlation about 0.59 down to 0.5 %), but it underestimates
+their size: predicted/true error falls from 0.97 at 10 % to 0.43 at 0.2 %. So we added an image-level warning with a
+threshold chosen on validation. On test it flags 41 of 42 unusable reconstructions with 7 % false alarms. Refitting
+the confidence model on lower densities is the obvious next step.

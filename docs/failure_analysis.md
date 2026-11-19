@@ -33,6 +33,12 @@ best at every density, but at ≤ 0.5 % its RMSE (> 0.16 m) is no longer useful 
 estimation, which a 0.7 M-parameter network trained on 126 frames cannot solve. The network also saw densities only
 down to 1 % during training.
 
+**Follow-up (all 24 test frames, with the confidence map).** `scripts/eval_sparse_confidence.py` repeats this sweep on all
+24 test frames: mean hybrid RMSE passes 0.15 m between 1 % and 0.5 %, and 58 % of test images are unusable at 0.2 %. The
+confidence map keeps ranking errors but underestimates their size at low density; the Reconstruction page now warns
+when the mean predicted error exceeds 3.6 cm (threshold chosen on validation; on test it flags 41 of 42 unusable images,
+7 % false alarms). Details: [generalisation_and_sparsity.md](generalisation_and_sparsity.md).
+
 **Improvements.** Train with densities down to 0.1 %; add a monocular depth prior (e.g. a distilled MiDaS/Depth
 Anything) as an additional expert; output an uncertainty map so the UI can flag unsupported regions.
 

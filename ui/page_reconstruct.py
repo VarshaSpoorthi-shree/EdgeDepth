@@ -8,7 +8,7 @@ from ui.common import (align_toggle, alignment_report, apply_alignment, depth_vi
                        range_for, show_images)
 from edgedepth import METHOD_LABELS
 from edgedepth.classical.edges import canny_edges, depth_discontinuities
-from edgedepth.confidence import ause, predict_error
+from edgedepth.confidence import reliability_warning, ause, predict_error
 from edgedepth.hybrid.fusion import hybrid_reconstruct
 from edgedepth.io_utils import colorize_error, save_depth_png
 from edgedepth.metrics import METRIC_LABELS, all_metrics, measure, no_reference_stats
@@ -45,6 +45,9 @@ def confidence_panel(b, depth, details):
     pe = predict_error(b.obs, depth, details)
     err, conf = pe["error_m"], pe["confidence"]
     st.markdown("#### 🎯 Confidence map — where to trust this depth")
+    warn = reliability_warning(err)
+    if warn:
+        st.warning(warn, icon="⚠️")
     emax = float(np.percentile(err, 99)) + 1e-6
     c = st.columns(4)
     c[0].metric("Pixels with high confidence (> 0.8)", f"{(conf > 0.8).mean() * 100:.0f} %")

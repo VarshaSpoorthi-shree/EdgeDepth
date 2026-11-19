@@ -2,8 +2,10 @@
 
 * NYU test-split frames (unseen during training) copied from data/nyu/test.
 * Cross-dataset RGB-D frames from the Open3D sample-data releases on GitHub
-  (TUM RGB-D, SUN RGB-D, Redwood, and one official NYU frame). These are
-  different sensors/scenes and are used for generalisation checks.
+  (TUM RGB-D, SUN RGB-D, Redwood living room 1, and one official NYU frame). TUM and
+  SUN are real sensors; the Redwood living-room frame is a synthetic render (Augmented
+  ICL-NUIM) with simulated sensor depth. Used for quick generalisation checks; the
+  systematic cross-dataset study is scripts/eval_cross_dataset.py.
 
 All depth maps are re-encoded as 16-bit PNG in millimetres, RGB as PNG,
 resized so the longest side is <= 640 and both sides are divisible by 8.
@@ -80,7 +82,7 @@ def main():
         decode=lambda d: ((d >> 3) | (d << 13)).astype(np.uint16), note="raw sensor depth with holes")
     # (The Open3D NYU sample stores raw 11-bit Kinect disparity, not metric depth, so it is not used.)
     # Redwood: millimetres
-    add("redwood_0", "Redwood (PrimeSense)", f"{o}/SampleRedwoodRGBDImages/color/00000.jpg",
+    add("redwood_0", "Redwood living room 1 (synthetic Augmented ICL-NUIM render, simulated sensor depth)", f"{o}/SampleRedwoodRGBDImages/color/00000.jpg",
         f"{o}/SampleRedwoodRGBDImages/depth/00000.png", 1.0, note="raw sensor depth with holes")
 
     with open(os.path.join(args.out, "samples.json"), "w") as f:

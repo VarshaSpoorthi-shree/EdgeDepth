@@ -33,8 +33,8 @@
  },
  {
   "id": "redwood_0",
-  "dataset": "Redwood (PrimeSense)",
-  "gt": "raw sensor depth with holes",
+  "dataset": "Redwood living room 1 (synthetic render, simulated sensor depth)",
+  "gt": "simulated sensor depth with holes",
   "holes_pct": 13.04
  }
 ]

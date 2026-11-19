@@ -48,6 +48,10 @@ FEATURES = ["expert_disagreement", "bp_correction", "dl_vs_bicubic", "network_bo
             "distance_to_measurement", "sensor_noise", "measurement_spacing", "missing_indicator"]
 EPS = 1e-4
 REL_TOL = 0.05  # error (relative to depth) at which confidence = 1/e
+# Image-level reliability warning: warn when the mean predicted error exceeds this (m).
+# Chosen on the VALIDATION split to flag images whose hybrid RMSE > 0.15 m
+# (scripts/eval_sparse_confidence.py -> results/sparse_confidence.json, "warning_rule").
+UNRELIABLE_MEAN_ERR_M = 0.0362
 
 
 def features(obs: Observation, out: np.ndarray, details: Dict) -> np.ndarray:
@@ -93,6 +97,18 @@ def predict_error(obs: Observation, out: np.ndarray, details: Dict, params: Opti
     err = rel * D
     conf = np.exp(-rel / REL_TOL)
     return {"error_m": err.astype(np.float32), "confidence": conf.astype(np.float32), "fitted": params is not None}
+
+
+def reliability_warning(pred_err_m: np.ndarray, valid: Optional[np.ndarray] = None) -> Optional[str]:
+    """Return a warning text when the whole reconstruction is likely unusable, else None."""
+    e = pred_err_m[valid] if valid is not None else pred_err_m
+    m = float(np.mean(e))
+    if m <= UNRELIABLE_MEAN_ERR_M:
+        return None
+    return (f"Low-reliability input: the predicted mean error is {m * 100:.1f} cm, above the "
+            f"{UNRELIABLE_MEAN_ERR_M * 100:.1f} cm warning level. On held-out test images this warning caught 41 of 42 "
+            "reconstructions with RMSE above 15 cm (about 7 % false alarms). Treat this depth map as approximate. With very "
+            "few measurements the confidence map also underestimates the error far from the measured points.")
 
 
 # ---------- evaluation helpers ----------

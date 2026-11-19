@@ -43,7 +43,7 @@ def render():
              "a 0.7M-parameter RGB-guided CNN, combined by a cue-driven per-pixel mixture of experts and refined by edge-aware back-projection.")
     with c[2]:
         card("Evaluation", "RMSE, MAE, PSNR, SSIM, boundary RMSE, edge F1, edge sharpness, latency and memory on unseen, "
-             "scene-disjoint NYU Depth V2 test frames plus TUM / SUN RGB-D / Redwood frames.")
+             "scene-disjoint NYU Depth V2 test frames, plus 133 frames from 5 other scenes (Stanford, Redwood, ICL-NUIM).")
 
     st.markdown("### System workflow")
     st.graphviz_chart(WORKFLOW, width="stretch")

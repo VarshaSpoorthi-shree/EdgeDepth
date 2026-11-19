@@ -9,3 +9,5 @@ data/nyu/train/
 data/nyu/val/
 *.log
 .DS_Store
+# Cross-dataset frames are re-downloaded by scripts/fetch_cross_dataset.py
+data/cross/

@@ -180,12 +180,106 @@ def new_features_section():
                    f"boundary RMSE {ai['b_rmse_before']:.4f} → {ai['b_rmse_after']:.4f} m (negligible change). "
                    "Vertical shifts and 2 px shifts are corrected poorly — see docs/new_features.md.")
 
+SRC_NAMES = {"icl_living": "ICL-NUIM living room (synthetic, exact GT)", "icl_office": "ICL-NUIM office (synthetic, exact GT)",
+             "lounge": "Stanford Lounge (real sensor)", "bedroom": "Redwood Bedroom (real sensor)",
+             "fountain": "Stanford Fountain (real sensor)"}
+
+
+def generalisation_section():
+    r = load_json("cross_dataset_eval.json")
+    st.markdown("### Generalisation beyond NYU Depth V2")
+    if not r:
+        st.info("results/cross_dataset_eval.json not found — run `python scripts/fetch_cross_dataset.py` then "
+                "`python scripts/eval_cross_dataset.py`.")
+        return
+    n = sum(r["frames"].values())
+    st.caption(f"{n} frames from 5 scenes and 3 dataset families, never used for training or tuning. Synthetic scenes are scored "
+               "against exact ground truth with the same conditions and seeds as the NYU test; real-sensor scenes are scored "
+               "against the raw sensor depth (holes excluded, sensor noise counted as error).")
+    o = r["overall_real_sensor"]
+    k = st.columns(4)
+    k[0].metric("Real sensors: hybrid RMSE", f"{o['hybrid']['rmse']:.4f} m",
+                f"{(o['hybrid']['rmse'] / o['bicubic']['rmse'] - 1) * 100:+.0f} % vs bicubic", delta_color="inverse")
+    k[1].metric("Real sensors: hybrid vs network alone", f"{(o['hybrid']['rmse'] / o['deep_learning']['rmse'] - 1) * 100:+.1f} %",
+                help=f"Network-only RMSE on the same inputs: {o['deep_learning']['rmse']:.4f} m")
+    s = r["overall_synthetic_gt"]
+    k[2].metric("Synthetic exact GT: hybrid RMSE", f"{s['hybrid']['rmse']:.4f} m",
+                f"{(s['hybrid']['rmse'] / s['bicubic']['rmse'] - 1) * 100:+.0f} % vs bicubic", delta_color="inverse")
+    k[3].metric("Frames where hybrid beats bicubic",
+                f"{np.mean([r['paired'][x]['hybrid_vs_bicubic']['win_rate_pct'] for x in r['paired']]):.0f} %")
+    show = ["bicubic", "guided_filter", "deep_learning", "hybrid"]
+    short = {"bicubic": "Bicubic", "guided_filter": "Guided", "deep_learning": "Network", "hybrid": "Hybrid"}
+    rows = []
+    for src, name in SRC_NAMES.items():
+        b, p = r["by_source"][src], r["paired"][src]
+        rows.append({"Source": name.split(" (")[0], "Type": name.split("(")[1].split(",")[0].rstrip(")"), "Frames": r["frames"][src],
+                     **{f"RMSE {short[m]}": b[m]["rmse"] for m in show},
+                     "Hybrid vs bicubic (%)": p["hybrid_vs_bicubic"]["mean_rel_change_pct"],
+                     "Hybrid vs network (%)": p["hybrid_vs_deep_learning"]["mean_rel_change_pct"],
+                     "95 % CI vs network": "[{:.1f}, {:.1f}]".format(*p["hybrid_vs_deep_learning"]["ci95_pct"]),
+                     "Wins vs network (% frames)": p["hybrid_vs_deep_learning"]["win_rate_pct"]})
+    st.dataframe(pd.DataFrame(rows).style.format(precision=4, subset=[f"RMSE {short[m]}" for m in show])
+                 .format(precision=1, subset=["Hybrid vs bicubic (%)", "Hybrid vs network (%)", "Wins vs network (% frames)"]),
+                 width="stretch", hide_index=True)
+    fig = go.Figure()
+    for m, col in zip(show, ("#9aa0a6", "#f2a33a", "#5b8def", "#1f9d55")):
+        fig.add_trace(go.Bar(name=METHOD_LABELS[m], x=[SRC_NAMES[x].split(" (")[0] for x in SRC_NAMES],
+                             y=[r["by_source"][x][m]["b_rmse"] for x in SRC_NAMES], marker_color=col))
+    fig.update_layout(barmode="group", height=330, title="Boundary RMSE by source (lower is better)", yaxis_title="m", **LAYOUT)
+    st.plotly_chart(fig, width="stretch")
+    st.markdown("#### Does the confidence map transfer?")
+    st.dataframe(pd.DataFrame([{"Source": SRC_NAMES[x], "AUSE ↓": c["ause_learned"], "AUSE random": c["ause_random"],
+                                "Rank correlation": c["spearman"], "Predicted / true error (1 = calibrated)": c["calibration_ratio"]}
+                               for x, c in r["confidence"].items()]).style.format(precision=3), width="stretch", hide_index=True)
+    ss = r["confidence_by_density_condition"].get("sim_sensor")
+    if ss:
+        st.caption(f"Limitation: with the simulated real-sensor input (noise + holes) scored against exact GT, the map still ranks "
+                   f"errors (AUSE {ss['ause_learned']:.3f}) but predicts only {ss['calibration_ratio']:.2f}× the true error size.")
+
+
+def sparse_section():
+    r = load_json("sparse_confidence.json")
+    st.markdown("### Extremely sparse inputs — where reconstruction stops being reliable")
+    if not r:
+        st.info("results/sparse_confidence.json not found — run `python scripts/eval_sparse_confidence.py`.")
+        return
+    T = r["test"]
+    st.dataframe(pd.DataFrame([{"Density": d, "Samples per image": v["n_samples"], "Hybrid RMSE (m)": v["rmse_hybrid"],
+                                "Network RMSE (m)": v["rmse_dl"], "Bicubic RMSE (m)": v["rmse_bicubic"],
+                                "Images with RMSE > 15 cm (%)": v["unusable_images_pct"],
+                                "Pixels with error > 10 cm (%)": v["bad_px_pct"],
+                                "Confidence rank correlation": v["spearman"],
+                                "Predicted / true error": v["calibration_ratio"]} for d, v in T.items()])
+                 .style.format(precision=3).format(precision=0, subset=["Samples per image"])
+                 .format(precision=1, subset=["Images with RMSE > 15 cm (%)", "Pixels with error > 10 cm (%)"]),
+                 width="stretch", hide_index=True)
+    E = r["error_vs_distance_test"]
+    fig = go.Figure()
+    for d, col in (("5%", "#5b8def"), ("1%", "#f2a33a"), ("0.2%", "#d93025")):
+        fig.add_trace(go.Scatter(x=E["bins_px"], y=E[d]["true"], name=f"{d} true", line=dict(color=col, width=3)))
+        fig.add_trace(go.Scatter(x=E["bins_px"], y=E[d]["pred"], name=f"{d} predicted", line=dict(color=col, dash="dash")))
+    fig.update_layout(height=330, title="Error vs distance to the nearest measurement (test split)",
+                      xaxis_title="distance (px)", yaxis_title="mean absolute error (m)", **LAYOUT)
+    st.plotly_chart(fig, width="stretch")
+    w = r["warning_rule"]["test"]
+    st.markdown(f"**Image-level warning** (threshold {w['threshold_m'] * 100:.1f} cm mean predicted error, chosen on validation): "
+                f"on the test split it flags {round(w['recall'] * w['n_unusable'])} of {w['n_unusable']} unusable reconstructions "
+                f"(RMSE > 15 cm), precision {w['precision'] * 100:.0f} %, false alarms {w['false_alarm_rate'] * 100:.0f} %.")
+    st.caption("The confidence map keeps ranking errors correctly down to 0.5 % density, but it underestimates their size far "
+               "from the measurements (its prediction stops growing beyond about 8–16 px), so at very low density it should be read as relative, "
+               "not absolute. The confidence model was fitted at 5 % density and above; lower densities are extrapolation.")
+
 
 def render():
     hero("Evaluation Dashboard", "Reference metrics only when valid ground truth exists · nothing here is hard-coded.")
-    tab1, tab2, tab4, tab3 = st.tabs(["Live (your input)", "Benchmark & ablation", "Unique features", "Mini-benchmark"])
+    tab1, tab2, tab4, tab5, tab3 = st.tabs(["Live (your input)", "Benchmark & ablation", "Unique features",
+                                            "Generalisation & sparsity", "Mini-benchmark"])
     with tab4:
         new_features_section()
+    with tab5:
+        generalisation_section()
+        st.divider()
+        sparse_section()
     with tab1:
         live_section()
     with tab2:

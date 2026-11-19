@@ -211,9 +211,14 @@ The fitted coefficients are shown in the app (Technical Architecture) and stored
   in millimetres (NYU's filled ground truth). Downsampled to 320×240 (RGB: area; depth: nearest).
 * **Scene-disjoint split**: train 126 frames (basement_1, study_1/2/3/4/7) · val 29 (basement_2, study_8) ·
   test 24 (basement_3, study_9). `data/nyu/manifest.json` lists every frame.
-* **Cross-dataset frames** (never used for training or tuning): TUM RGB-D fr1 (Kinect v1), SUN RGB-D, Redwood
-  (PrimeSense), from the Open3D sample-data releases, converted to millimetres; their raw depth has 13–19 % holes,
-  which are excluded from metrics.
+* **Quick cross-dataset frames** (never used for training or tuning): TUM RGB-D fr1 (Kinect v1) and SUN RGB-D (real
+  sensors), and Redwood living room 1 (a synthetic Augmented ICL-NUIM render with simulated sensor depth; an earlier
+  version of this document wrongly called it PrimeSense), from the Open3D sample-data releases, converted to
+  millimetres; their depth has 13–19 % holes, which are excluded from metrics.
+* **Systematic cross-dataset set** (133 frames, never used for training or tuning; `scripts/fetch_cross_dataset.py`):
+  Stanford Lounge (25), Redwood Bedroom (25) and Stanford Fountain (33) with real sensor depth, and Augmented ICL-NUIM
+  living room 1 / office 1 (25 + 25, synthetic) with exact ground truth and a simulated sensor stream. Results in
+  `docs/generalisation_and_sparsity.md`.
 * KITTI and Middlebury servers were also unreachable; this is listed as a limitation.
 
 ## 10. Experimental methodology

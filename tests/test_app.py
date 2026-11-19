@@ -102,3 +102,13 @@ def test_failure_misalignment_shows_aligned_hybrid():
     at.selectbox[0].set_value(opt).run()
     at.button[0].click().run()
     assert not at.exception and not at.error
+
+
+def test_reconstruction_warns_on_very_sparse_input():
+    at = goto(app(), PAGES[1])
+    at.radio(key="rec_mode").set_value("Sparse samples").run()
+    at.slider(key="rec_dens").set_value(0.2).run()
+    at.button[0].click().run()
+    assert not at.exception and not at.error
+    texts = [w.value for w in at.warning]
+    assert any("Low-reliability" in t for t in texts), texts
